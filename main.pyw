@@ -4,11 +4,11 @@ import random
 
 
 class Square:
-	def __init__(self, button: tk.Button, position: tuple[int, int]) -> None:
+	def __init__(self, button: tk.Button, position: tuple[int, int], value: int | str) -> None:
 		self.bomb = False
 		self.button = button
 		self.position = position
-		self.value = self.button["text"]
+		self.value = value
 
 
 class GUI:
@@ -49,14 +49,15 @@ class GUI:
 		for row in range(dimentions[0]):
 			for column in range(dimentions[1]):
 				pattern = self.pattern[row][column]
-				square = Square(tk.Button(self.grid_frame, text=pattern, width=width, height=height,
-				    							  command=lambda row=row, column=column: self.button_pressed(row, column)), (row, column))
+				square = Square(tk.Button(self.grid_frame, text="", width=width, height=height,
+				    					  command=lambda row=row, column=column: self.button_pressed(row, column)),
+										  (row, column), pattern)
 				square.button.grid(row=row, column=column)
 				self.square_reference[(row, column)] = square
 	
 	def button_pressed(self, row, column) -> None:
 		square = self.square_reference[(row, column)]
-		square.button.config(relief="sunken")
+		square.button.config(text=square.value if square.value != 0 else "", relief="sunken")
 	
 	def mainloop(self) -> None:
 		self.grid_frame.pack()
