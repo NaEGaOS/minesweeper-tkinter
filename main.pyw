@@ -3,6 +3,14 @@ import json
 import random
 
 
+class Global:
+	global settings
+	with open(r"game_files\settings.json", "r") as settings_file:
+		settings = json.load(settings_file)
+	global square_colours
+	with open(r"game_files\square_colours.json", "r") as square_colours_file:
+		square_colours = json.load(square_colours_file)
+
 class Square:
 	def __init__(self, button: tk.Button, position: tuple[int, int], value: int | str) -> None:
 		self.bomb = False
@@ -13,8 +21,6 @@ class Square:
 
 class GUI:
 	def __init__(self) -> None:
-		with open(r"game_files\settings.json", "r") as settings_file:
-			self.settings = json.load(settings_file)
 		self.root = tk.Tk()
 		self.root.title("Minesweeper")
 		# frames
@@ -23,8 +29,8 @@ class GUI:
 		# variables
 		
 		# code
-		self.create_pattern(self.settings["grid size"], self.settings["total bombs"])
-		self.create_grid(self.settings["grid size"])
+		self.create_pattern(settings["grid size"], settings["total bombs"])
+		self.create_grid(settings["grid size"])
 	
 	def create_pattern(self, dimentions: tuple[int, int], total_bombs: int) -> None:
 		self.pattern = [[0 for _ in range(dimentions[1])] for _ in range(dimentions[0])]  # 2d list based on dimentions
@@ -45,7 +51,7 @@ class GUI:
 	
 	def create_grid(self, dimentions: tuple[int, int]) -> None:
 		self.square_reference = {}
-		width, height = self.settings["square size"]
+		width, height = settings["square size"]
 		for row in range(dimentions[0]):
 			for column in range(dimentions[1]):
 				pattern = self.pattern[row][column]
@@ -58,7 +64,8 @@ class GUI:
 	def button_pressed(self, row, column) -> None:
 		queue = []
 		square = self.square_reference[(row, column)]
-		square.button.config(text=square.value if square.value != 0 else "", relief="sunken")
+		square.button.config(text=square.value if square.value != 0 else "", relief="sunken",
+							 fg=square_colours[str(square.value)])
 		if square.value == 0:
 			queue.append(square)
 		# press all connecting 
@@ -67,9 +74,9 @@ class GUI:
 			direct_neighbors = []
 			row, column = current_square.position
 			direct_neighbors.append(self.square_reference[row-1, column]) if row != 0 else None
-			direct_neighbors.append(self.square_reference[row+1, column]) if row != self.settings["grid size"][0] - 1 else None
+			direct_neighbors.append(self.square_reference[row+1, column]) if row != settings["grid size"][0] - 1 else None
 			direct_neighbors.append(self.square_reference[row, column-1]) if column != 0 else None
-			direct_neighbors.append(self.square_reference[row, column+1]) if column != self.settings["grid size"][1] - 1 else None
+			direct_neighbors.append(self.square_reference[row, column+1]) if column != settings["grid size"][1] - 1 else None
 			for neighbor in direct_neighbors:
 				if neighbor.value == 0:
 					queue.append(neighbor) if neighbor not in queue else None
