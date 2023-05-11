@@ -7,9 +7,13 @@ class Global:
 	global settings
 	with open(r"game_files\settings.json", "r") as settings_file:
 		settings = json.load(settings_file)
-	global square_colours
-	with open(r"game_files\square_colours.json", "r") as square_colours_file:
-		square_colours = json.load(square_colours_file)
+	global number_colours
+	with open(r"game_files\number_colours.json", "r") as number_colours_file:
+		number_colours = json.load(number_colours_file)
+	global button_colours
+	with open(r"game_files\button_colours.json", "r") as button_colours_file:
+		button_colours = json.load(button_colours_file)
+	
 
 
 class Square:
@@ -24,11 +28,12 @@ class GUI:
 	def __init__(self) -> None:
 		self.root = tk.Tk()
 		self.root.title("Minesweeper")
+		# binds
+		self.root.bind("<Escape>", lambda event: self.reset())
+		# widgets
+		
 		# frames
 		self.grid_frame = tk.Frame(self.root)
-		# widgets
-		# variables
-		
 		# code
 		self.create_pattern(settings["grid size"], settings["total bombs"])
 		self.create_grid(settings["grid size"])
@@ -56,7 +61,7 @@ class GUI:
 		for row in range(dimentions[0]):
 			for column in range(dimentions[1]):
 				pattern = self.pattern[row][column]
-				square = Square(tk.Button(self.grid_frame, text="", width=width, height=height,
+				square = Square(tk.Button(self.grid_frame, text="", width=width, height=height, bg=button_colours["raised"],
 				    					  command=lambda row=row, column=column: self.button_pressed(row, column, True)),
 								(row, column), pattern)
 				square.button.bind("<Button-3>", lambda event, row=row, column=column: self.button_pressed(row, column, False))
@@ -65,15 +70,16 @@ class GUI:
 	
 	def button_pressed(self, row: int, column: int, leftclick: bool) -> None:
 		square = self.square_reference[(row, column)]
+		if square.button["relief"] == "sunken":  # already pressed
+			return
 		if leftclick and not square.flag:
-			queue = []
-			square.button.config(text=square.value if square.value != 0 else "", relief="sunken",
-								fg=square_colours[str(square.value)])
-			if square.value == 0:
-				queue.append(square)
+			square.button.config(text=square.value if square.value != 0 else "", relief="sunken", fg=number_colours[str(square.value)],
+								 bg=button_colours["sunken"])
+			queue = [square] if square.value == 0 else []
 			# press all connecting 
 			for current_square in queue:
-				current_square.button.config(text=current_square.value if current_square.value != 0 else "", relief="sunken")
+				current_square.button.config(text=current_square.value if current_square.value != 0 else "", relief="sunken",
+											 bg=button_colours["sunken"])
 				direct_neighbors = []
 				indirect_neighbors = []
 				row, column = current_square.position
@@ -89,17 +95,26 @@ class GUI:
 					if neighbor.value == 0:
 						queue.append(neighbor) if neighbor not in queue else None
 					else:
-						neighbor.button.config(text=neighbor.value, relief="sunken", fg=square_colours[str(neighbor.value)])
+						neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
+			     							   bg=button_colours["sunken"])
 				for neighbor in indirect_neighbors:
-					neighbor.button.config(text=neighbor.value, relief="sunken", fg=square_colours[str(neighbor.value)])
-			return
-		if square.button["relief"] == "raised" and not leftclick:  # right click on unpressed square
+					neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
+			    						   bg=button_colours["sunken"])
+		if not leftclick:  # right click on unpressed square
 			square.flag = not square.flag
 			if square.flag:
 				square.button.config(text="F", fg="red")
 			else:
-				square.button.config(text="", fg=square_colours[str(square.value)])
-				
+				square.button.config(text="", fg=number_colours[str(square.value)])
+
+
+	def reset(self) -> None:
+		self.grid_frame.destroy()
+		self.grid_frame = tk.Frame(self.root)
+		self.create_pattern(settings["grid size"], settings["total bombs"])
+		self.create_grid(settings["grid size"])
+		self.mainloop()
+
 
 	def mainloop(self) -> None:
 		self.grid_frame.pack()
