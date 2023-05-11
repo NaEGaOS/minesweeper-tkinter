@@ -11,9 +11,10 @@ class Global:
 	with open(r"game_files\square_colours.json", "r") as square_colours_file:
 		square_colours = json.load(square_colours_file)
 
+
 class Square:
 	def __init__(self, button: tk.Button, position: tuple[int, int], value: int | str) -> None:
-		self.bomb = False
+		self.flag = False
 		self.button = button
 		self.position = position
 		self.value = value
@@ -61,7 +62,7 @@ class GUI:
 				square.button.grid(row=row, column=column)
 				self.square_reference[(row, column)] = square
 	
-	def button_pressed(self, row, column) -> None:
+	def button_pressed(self, row: int, column: int) -> None:
 		queue = []
 		square = self.square_reference[(row, column)]
 		square.button.config(text=square.value if square.value != 0 else "", relief="sunken",
@@ -72,14 +73,23 @@ class GUI:
 		for current_square in queue:
 			current_square.button.config(text=current_square.value if current_square.value != 0 else "", relief="sunken")
 			direct_neighbors = []
+			indirect_neighbors = []
 			row, column = current_square.position
 			direct_neighbors.append(self.square_reference[row-1, column]) if row != 0 else None
 			direct_neighbors.append(self.square_reference[row+1, column]) if row != settings["grid size"][0] - 1 else None
 			direct_neighbors.append(self.square_reference[row, column-1]) if column != 0 else None
 			direct_neighbors.append(self.square_reference[row, column+1]) if column != settings["grid size"][1] - 1 else None
+			indirect_neighbors.append(self.square_reference[row-1, column-1]) if row != 0 and column != 0 else None
+			indirect_neighbors.append(self.square_reference[row-1, column+1]) if row != 0 and column != settings["grid size"][1] - 1 else None
+			indirect_neighbors.append(self.square_reference[row+1, column-1]) if row != settings["grid size"][0] - 1 and column != 0 else None
+			indirect_neighbors.append(self.square_reference[row+1, column+1]) if row != settings["grid size"][0] - 1 and column != settings["grid size"][1] - 1 else None
 			for neighbor in direct_neighbors:
 				if neighbor.value == 0:
 					queue.append(neighbor) if neighbor not in queue else None
+				else:
+					neighbor.button.config(text=neighbor.value, relief="sunken", fg=square_colours[str(neighbor.value)])
+			for neighbor in indirect_neighbors:
+				neighbor.button.config(text=neighbor.value, relief="sunken", fg=square_colours[str(neighbor.value)])
 
 	def mainloop(self) -> None:
 		self.grid_frame.pack()
