@@ -57,39 +57,49 @@ class GUI:
 			for column in range(dimentions[1]):
 				pattern = self.pattern[row][column]
 				square = Square(tk.Button(self.grid_frame, text="", width=width, height=height,
-				    					  command=lambda row=row, column=column: self.button_pressed(row, column)),
+				    					  command=lambda row=row, column=column: self.button_pressed(row, column, True)),
 								(row, column), pattern)
+				square.button.bind("<Button-3>", lambda event, row=row, column=column: self.button_pressed(row, column, False))
 				square.button.grid(row=row, column=column)
 				self.square_reference[(row, column)] = square
 	
-	def button_pressed(self, row: int, column: int) -> None:
-		queue = []
+	def button_pressed(self, row: int, column: int, leftclick: bool) -> None:
 		square = self.square_reference[(row, column)]
-		square.button.config(text=square.value if square.value != 0 else "", relief="sunken",
-							 fg=square_colours[str(square.value)])
-		if square.value == 0:
-			queue.append(square)
-		# press all connecting 
-		for current_square in queue:
-			current_square.button.config(text=current_square.value if current_square.value != 0 else "", relief="sunken")
-			direct_neighbors = []
-			indirect_neighbors = []
-			row, column = current_square.position
-			direct_neighbors.append(self.square_reference[row-1, column]) if row != 0 else None
-			direct_neighbors.append(self.square_reference[row+1, column]) if row != settings["grid size"][0] - 1 else None
-			direct_neighbors.append(self.square_reference[row, column-1]) if column != 0 else None
-			direct_neighbors.append(self.square_reference[row, column+1]) if column != settings["grid size"][1] - 1 else None
-			indirect_neighbors.append(self.square_reference[row-1, column-1]) if row != 0 and column != 0 else None
-			indirect_neighbors.append(self.square_reference[row-1, column+1]) if row != 0 and column != settings["grid size"][1] - 1 else None
-			indirect_neighbors.append(self.square_reference[row+1, column-1]) if row != settings["grid size"][0] - 1 and column != 0 else None
-			indirect_neighbors.append(self.square_reference[row+1, column+1]) if row != settings["grid size"][0] - 1 and column != settings["grid size"][1] - 1 else None
-			for neighbor in direct_neighbors:
-				if neighbor.value == 0:
-					queue.append(neighbor) if neighbor not in queue else None
-				else:
+		if leftclick and not square.flag:
+			queue = []
+			square.button.config(text=square.value if square.value != 0 else "", relief="sunken",
+								fg=square_colours[str(square.value)])
+			if square.value == 0:
+				queue.append(square)
+			# press all connecting 
+			for current_square in queue:
+				current_square.button.config(text=current_square.value if current_square.value != 0 else "", relief="sunken")
+				direct_neighbors = []
+				indirect_neighbors = []
+				row, column = current_square.position
+				direct_neighbors.append(self.square_reference[row-1, column]) if row != 0 else None
+				direct_neighbors.append(self.square_reference[row+1, column]) if row != settings["grid size"][0] - 1 else None
+				direct_neighbors.append(self.square_reference[row, column-1]) if column != 0 else None
+				direct_neighbors.append(self.square_reference[row, column+1]) if column != settings["grid size"][1] - 1 else None
+				indirect_neighbors.append(self.square_reference[row-1, column-1]) if row != 0 and column != 0 else None
+				indirect_neighbors.append(self.square_reference[row-1, column+1]) if row != 0 and column != settings["grid size"][1] - 1 else None
+				indirect_neighbors.append(self.square_reference[row+1, column-1]) if row != settings["grid size"][0] - 1 and column != 0 else None
+				indirect_neighbors.append(self.square_reference[row+1, column+1]) if row != settings["grid size"][0] - 1 and column != settings["grid size"][1] - 1 else None
+				for neighbor in direct_neighbors:
+					if neighbor.value == 0:
+						queue.append(neighbor) if neighbor not in queue else None
+					else:
+						neighbor.button.config(text=neighbor.value, relief="sunken", fg=square_colours[str(neighbor.value)])
+				for neighbor in indirect_neighbors:
 					neighbor.button.config(text=neighbor.value, relief="sunken", fg=square_colours[str(neighbor.value)])
-			for neighbor in indirect_neighbors:
-				neighbor.button.config(text=neighbor.value, relief="sunken", fg=square_colours[str(neighbor.value)])
+			return
+		if square.button["relief"] == "raised" and not leftclick:  # right click on unpressed square
+			square.flag = not square.flag
+			if square.flag:
+				square.button.config(text="F", fg="red")
+			else:
+				square.button.config(text="", fg=square_colours[str(square.value)])
+				
 
 	def mainloop(self) -> None:
 		self.grid_frame.pack()
