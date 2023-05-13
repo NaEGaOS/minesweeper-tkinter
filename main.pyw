@@ -5,16 +5,15 @@ import random
 
 class Global:
 	global settings
-	with open(r"game_files\settings.json", "r") as settings_file:
+	with open(r"game_files\json files\settings.json", "r") as settings_file:
 		settings = json.load(settings_file)
 	global number_colours
-	with open(r"game_files\number_colours.json", "r") as number_colours_file:
+	with open(r"game_files\json files\number_colours.json", "r") as number_colours_file:
 		number_colours = json.load(number_colours_file)
 	global button_colours
-	with open(r"game_files\button_colours.json", "r") as button_colours_file:
+	with open(r"game_files\json files\button_colours.json", "r") as button_colours_file:
 		button_colours = json.load(button_colours_file)
 	
-
 
 class Square:
 	def __init__(self, button: tk.Button, position: tuple[int, int], value: int | str) -> None:
@@ -30,13 +29,55 @@ class GUI:
 		self.root.title("Minesweeper")
 		# binds
 		self.root.bind("<Escape>", lambda event: self.reset())
-		# widgets
-		
+		# variables
+		self.remaining_bombs = settings["total bombs"]
+		self.game_over = False
+		self.image_bomb = tk.PhotoImage(file=r"game_files\image files\bomb.png")
 		# frames
 		self.grid_frame = tk.Frame(self.root)
+		# widgets
+		self.settings_button = tk.Button(self.root, text="settings", command=lambda: self.open_settings())
+		self.new_game_button = tk.Button(self.root, text="new game", command=lambda: self.reset())
+		self.remaining_bombs_label = tk.Label(self.root, text=f"remaining bombs: {self.remaining_bombs}")
 		# code
-		self.create_pattern(settings["grid size"], settings["total bombs"])
 		self.create_grid(settings["grid size"])
+	
+	def open_settings(self) -> None:
+
+		def save_settings() -> None:
+			try:
+				grid_size = (int(rows_entry.get()), int(columns_entry.get()))
+				total_bombs = int(bombs_entry.get())
+			except ValueError:
+				return
+			if grid_size[0] * grid_size[1] < total_bombs:
+				return
+			settings["grid size"] = grid_size
+			settings["total bombs"] = total_bombs
+			with open(r"game_files\json files\settings.json", "w") as settings_file:
+				json.dump(settings, settings_file, indent=4)	
+			settings_window.destroy()
+			self.reset()
+		
+		settings_window = tk.Toplevel(self.root)
+		settings_window.title("settings")
+		# widgets
+		columns_label = tk.Label(settings_window, text="columns")
+		columns_entry = tk.Entry(settings_window, width=3)
+		rows_label = tk.Label(settings_window, text="rows")
+		rows_entry = tk.Entry(settings_window, width=3)
+		bombs_label = tk.Label(settings_window, text="bombs")
+		bombs_entry = tk.Entry(settings_window, width=3)
+		save_button = tk.Button(settings_window, text="save", command=lambda: save_settings())
+		# pack
+		columns_label.grid(row=0, column=0)
+		columns_entry.grid(row=0, column=1)
+		rows_label.grid(row=1, column=0)
+		rows_entry.grid(row=1, column=1)
+		bombs_label.grid(row=2, column=0)
+		bombs_entry.grid(row=2, column=1)
+		save_button.grid(row=3, column=0, columnspan=2)
+		settings_window.mainloop()
 	
 	def create_pattern(self, dimentions: tuple[int, int], total_bombs: int) -> None:
 		self.pattern = [[0 for _ in range(dimentions[1])] for _ in range(dimentions[0])]  # 2d list based on dimentions
@@ -56,6 +97,7 @@ class GUI:
 								self.pattern[row+row_offset][column+column_offset] += 1
 	
 	def create_grid(self, dimentions: tuple[int, int]) -> None:
+		self.create_pattern(dimentions, settings["total bombs"])
 		self.square_reference = {}
 		width, height = settings["square size"]
 		for row in range(dimentions[0]):
@@ -70,9 +112,19 @@ class GUI:
 	
 	def button_pressed(self, row: int, column: int, leftclick: bool) -> None:
 		square = self.square_reference[(row, column)]
-		if square.button["relief"] == "sunken":  # already pressed
+		if square.button["relief"] == "sunken" or self.game_over:  # already pressed
 			return
 		if leftclick and not square.flag:
+			if square.value == "b":
+				self.game_over = True
+				self.remaining_bombs_label.config(text="game over")
+				for current_square in self.square_reference.values():
+					if current_square is square:  # pressed square
+						continue
+					if current_square.value == "b" and not current_square.flag:
+						current_square.button.config(text="B")
+					elif current_square.flag and current_square.value != "b":
+						current_square.button.config(text="X", fg="red")
 			square.button.config(text=square.value if square.value != 0 else "", relief="sunken", fg=number_colours[str(square.value)],
 								 bg=button_colours["sunken"])
 			queue = [square] if square.value == 0 else []
@@ -93,31 +145,38 @@ class GUI:
 				indirect_neighbors.append(self.square_reference[row+1, column+1]) if row != settings["grid size"][0] - 1 and column != settings["grid size"][1] - 1 else None
 				for neighbor in direct_neighbors:
 					if neighbor.value == 0:
-						queue.append(neighbor) if neighbor not in queue else None
+						queue.append(neighbor) if neighbor not in queue else None  # gets pressed later
 					else:
 						neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
 			     							   bg=button_colours["sunken"])
 				for neighbor in indirect_neighbors:
 					neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
-			    						   bg=button_colours["sunken"])
+			    						   bg=button_colours["sunken"]) if neighbor.value != 0 else None
 		if not leftclick:  # right click on unpressed square
 			square.flag = not square.flag
 			if square.flag:
 				square.button.config(text="F", fg="red")
+				self.remaining_bombs -= 1
+				self.remaining_bombs_label.config(text=f"remaining bombs: {self.remaining_bombs}")
 			else:
 				square.button.config(text="", fg=number_colours[str(square.value)])
-
+				self.remaining_bombs += 1
+				self.remaining_bombs_label.config(text=f"remaining bombs: {self.remaining_bombs}")
 
 	def reset(self) -> None:
+		self.game_over = False
+		self.remaining_bombs = settings["total bombs"]
+		self.remaining_bombs_label.config(text=f"remaining bombs: {self.remaining_bombs}")
 		self.grid_frame.destroy()
 		self.grid_frame = tk.Frame(self.root)
-		self.create_pattern(settings["grid size"], settings["total bombs"])
 		self.create_grid(settings["grid size"])
 		self.mainloop()
 
-
 	def mainloop(self) -> None:
-		self.grid_frame.pack()
+		self.settings_button.place(x=5, y=5)
+		self.new_game_button.pack(pady=5)
+		self.remaining_bombs_label.pack(pady=5)
+		self.grid_frame.pack(pady=5)
 		self.root.mainloop()
 
 

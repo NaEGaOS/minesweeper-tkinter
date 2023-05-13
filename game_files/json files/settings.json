@@ -1,0 +1,11 @@
+{
+    "total bombs": 50,
+    "grid size": [
+        20,
+        20
+    ],
+    "square size": [
+        2,
+        1
+    ]
+}
