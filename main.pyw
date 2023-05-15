@@ -33,6 +33,7 @@ class GUI:
 		self.remaining_bombs = settings["total bombs"]
 		self.game_over = False
 		self.image_bomb = tk.PhotoImage(file=r"game_files\image files\bomb.png")
+		self.image_flag = tk.PhotoImage(file=r"game_files\image files\flag.png")
 		# frames
 		self.grid_frame = tk.Frame(self.root)
 		# widgets
@@ -46,11 +47,11 @@ class GUI:
 
 		def save_settings() -> None:
 			try:
-				grid_size = (int(rows_entry.get()), int(columns_entry.get()))
+				grid_size = (abs(int(rows_entry.get())), abs(int(columns_entry.get())))
 				total_bombs = int(bombs_entry.get())
 			except ValueError:
 				return
-			if grid_size[0] * grid_size[1] < total_bombs:
+			if grid_size[0] * grid_size[1] < total_bombs or total_bombs < 1:
 				return
 			settings["grid size"] = grid_size
 			settings["total bombs"] = total_bombs
@@ -99,11 +100,10 @@ class GUI:
 	def create_grid(self, dimentions: tuple[int, int]) -> None:
 		self.create_pattern(dimentions, settings["total bombs"])
 		self.square_reference = {}
-		width, height = settings["square size"]
 		for row in range(dimentions[0]):
 			for column in range(dimentions[1]):
 				pattern = self.pattern[row][column]
-				square = Square(tk.Button(self.grid_frame, text="", width=width, height=height, bg=button_colours["raised"],
+				square = Square(tk.Button(self.grid_frame, text="", width=2, height=1, bg=button_colours["raised"],
 				    					  command=lambda row=row, column=column: self.button_pressed(row, column, True)),
 								(row, column), pattern)
 				square.button.bind("<Button-3>", lambda event, row=row, column=column: self.button_pressed(row, column, False))
@@ -117,13 +117,11 @@ class GUI:
 		if leftclick and not square.flag:
 			if square.value == "b":
 				self.game_over = True
-				self.remaining_bombs_label.config(text="game over")
+				self.remaining_bombs_label.config(text="losser :( :( :(")
 				for current_square in self.square_reference.values():
-					if current_square is square:  # pressed square
-						continue
-					if current_square.value == "b" and not current_square.flag:
-						current_square.button.config(text="B")
-					elif current_square.flag and current_square.value != "b":
+					if current_square.value == "b" and not current_square.flag:  # unflagged bomb
+						current_square.button.config(text=None, image=self.image_bomb, width=18, height=20)
+					elif current_square.flag and current_square.value != "b":  # wrong flag
 						current_square.button.config(text="X", fg="red")
 			square.button.config(text=square.value if square.value != 0 else "", relief="sunken", fg=number_colours[str(square.value)],
 								 bg=button_colours["sunken"])
@@ -155,13 +153,18 @@ class GUI:
 		if not leftclick:  # right click on unpressed square
 			square.flag = not square.flag
 			if square.flag:
-				square.button.config(text="F", fg="red")
+				square.button.config(text=None, image=self.image_flag, width=18, height=20)
 				self.remaining_bombs -= 1
-				self.remaining_bombs_label.config(text=f"remaining bombs: {self.remaining_bombs}")
+				self.remaining_bombs_label.config(text=f"remaining bombs: {self.remaining_bombs if self.remaining_bombs >= 0 else 0}")
 			else:
-				square.button.config(text="", fg=number_colours[str(square.value)])
+				square.button.config(text="", fg=number_colours[str(square.value)], image="", width=2, height=1)
 				self.remaining_bombs += 1
 				self.remaining_bombs_label.config(text=f"remaining bombs: {self.remaining_bombs}")
+		# if all non-bomb squares are pressed or all bombs are flagged
+		if all(square.button["relief"] == "sunken" for square in self.square_reference.values() if square.value != "b") or \
+		   all(square.flag for square in self.square_reference.values() if square.value == "b"):
+			self.game_over = True
+			self.remaining_bombs_label.config(text="you win :) :) :)")
 
 	def reset(self) -> None:
 		self.game_over = False
@@ -174,9 +177,9 @@ class GUI:
 
 	def mainloop(self) -> None:
 		self.settings_button.place(x=5, y=5)
-		self.new_game_button.pack(pady=5)
-		self.remaining_bombs_label.pack(pady=5)
-		self.grid_frame.pack(pady=5)
+		self.new_game_button.pack(padx=5, pady=5)
+		self.remaining_bombs_label.pack(padx=5, pady=5)
+		self.grid_frame.pack(padx=5, pady=5)
 		self.root.mainloop()
 
 
