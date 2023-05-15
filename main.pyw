@@ -5,13 +5,13 @@ import random
 
 class Global:
 	global settings
-	with open(r"game_files\json files\settings.json", "r") as settings_file:
+	with open(r"game files\json files\settings.json", "r") as settings_file:
 		settings = json.load(settings_file)
 	global number_colours
-	with open(r"game_files\json files\number_colours.json", "r") as number_colours_file:
+	with open(r"game files\json files\number_colours.json", "r") as number_colours_file:
 		number_colours = json.load(number_colours_file)
 	global button_colours
-	with open(r"game_files\json files\button_colours.json", "r") as button_colours_file:
+	with open(r"game files\json files\button_colours.json", "r") as button_colours_file:
 		button_colours = json.load(button_colours_file)
 	
 
@@ -32,8 +32,9 @@ class GUI:
 		# variables
 		self.remaining_bombs = settings["total bombs"]
 		self.game_over = False
-		self.image_bomb = tk.PhotoImage(file=r"game_files\image files\bomb.png")
-		self.image_flag = tk.PhotoImage(file=r"game_files\image files\flag.png")
+		self.image_bomb = tk.PhotoImage(file=r"game files\image files\bomb.png")
+		self.image_bomb_crossed = tk.PhotoImage(file=r"game files\image files\bomb crossed.png")
+		self.image_flag = tk.PhotoImage(file=r"game files\image files\flag.png")
 		# frames
 		self.grid_frame = tk.Frame(self.root)
 		# widgets
@@ -55,7 +56,7 @@ class GUI:
 				return
 			settings["grid size"] = grid_size
 			settings["total bombs"] = total_bombs
-			with open(r"game_files\json files\settings.json", "w") as settings_file:
+			with open(r"game files\json files\settings.json", "w") as settings_file:
 				json.dump(settings, settings_file, indent=4)	
 			settings_window.destroy()
 			self.reset()
@@ -122,7 +123,7 @@ class GUI:
 					if current_square.value == "b" and not current_square.flag:  # unflagged bomb
 						current_square.button.config(text=None, image=self.image_bomb, width=18, height=20)
 					elif current_square.flag and current_square.value != "b":  # wrong flag
-						current_square.button.config(text="X", fg="red")
+						current_square.button.config(text=None, image=self.image_bomb_crossed, width=18, height=20)
 			square.button.config(text=square.value if square.value != 0 else "", relief="sunken", fg=number_colours[str(square.value)],
 								 bg=button_colours["sunken"])
 			queue = [square] if square.value == 0 else []
