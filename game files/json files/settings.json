@@ -1,7 +1,7 @@
 {
-    "total bombs": 70,
+    "total bombs": 30,
     "grid size": [
-        20,
-        20
+        10,
+        10
     ]
 }

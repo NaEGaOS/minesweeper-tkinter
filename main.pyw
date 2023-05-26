@@ -16,7 +16,7 @@ class Global:
 	
 
 class Square:
-	def __init__(self, button: tk.Button, position: tuple[int, int], value: int | str) -> None:
+	def __init__(self, button: tk.Button, position: tuple[int, int], value: int | str = 0) -> None:
 		self.flag = False
 		self.button = button
 		self.position = position
@@ -32,6 +32,7 @@ class GUI:
 		# variables
 		self.remaining_bombs = settings["total bombs"]
 		self.game_over = False
+		self.first_pressed = True
 		self.image_bomb = tk.PhotoImage(file=r"game files\image files\bomb.png")
 		self.image_bomb_crossed = tk.PhotoImage(file=r"game files\image files\bomb crossed.png")
 		self.image_flag = tk.PhotoImage(file=r"game files\image files\flag.png")
@@ -81,37 +82,43 @@ class GUI:
 		save_button.grid(row=3, column=0, columnspan=2)
 		settings_window.mainloop()
 	
-	def create_pattern(self, dimentions: tuple[int, int], total_bombs: int) -> None:
-		self.pattern = [[0 for _ in range(dimentions[1])] for _ in range(dimentions[0])]  # 2d list based on dimentions
-		bombs_remaining = total_bombs
-		while bombs_remaining > 0:
-			row, column = (random.randint(0, dimentions[0] - 1), random.randint(0, dimentions[1] - 1))
-			if self.pattern[row][column] != "b":  # turns square to bomb
-				self.pattern[row][column] = "b"
-				bombs_remaining -= 1
-				# increment surrounding squares
-				for row_offset in range(-1, 2):
-					for column_offset in range(-1, 2):
-						if row_offset == column_offset == 0:  # skips center square
-							continue
-						if 0 <= row + row_offset < dimentions[0] and 0 <= column + column_offset < dimentions[1]:
-							if self.pattern[row+row_offset][column+column_offset] != "b":
-								self.pattern[row+row_offset][column+column_offset] += 1
-	
 	def create_grid(self, dimentions: tuple[int, int]) -> None:
-		self.create_pattern(dimentions, settings["total bombs"])
 		self.square_reference = {}
 		for row in range(dimentions[0]):
 			for column in range(dimentions[1]):
-				pattern = self.pattern[row][column]
 				square = Square(tk.Button(self.grid_frame, text="", width=2, height=1, bg=button_colours["raised"],
 				    					  command=lambda row=row, column=column: self.button_pressed(row, column, True)),
-								(row, column), pattern)
+								(row, column))
 				square.button.bind("<Button-3>", lambda event, row=row, column=column: self.button_pressed(row, column, False))
 				square.button.grid(row=row, column=column)
 				self.square_reference[(row, column)] = square
 	
+	def apply_pattern(self, dimentions: tuple[int, int], total_bombs: int, clicked_square: Square) -> None:
+		bombs_remaining = total_bombs
+		while bombs_remaining > 0:
+			row, column = (random.randint(0, dimentions[0] - 1), random.randint(0, dimentions[1] - 1))
+			current_square = self.square_reference[(row, column)]
+			if current_square is clicked_square:
+				continue
+			if current_square.value == "b":
+				continue
+			current_square.value = "b"
+			bombs_remaining -= 1
+			# increment surrounding squares
+			for row_offset in range(-1, 2):
+				for column_offset in range(-1, 2):
+					if row_offset == column_offset == 0:  # skips center square
+						continue
+					if not (0 <= row + row_offset < dimentions[0] and 0 <= column + column_offset < dimentions[1]):
+						continue
+					increment_square = self.square_reference[(row+row_offset, column+column_offset)]
+					if increment_square.value != "b":
+						increment_square.value += 1
+	
 	def button_pressed(self, row: int, column: int, leftclick: bool) -> None:
+		if self.first_pressed:
+			self.apply_pattern(settings["grid size"], settings["total bombs"], self.square_reference[(row, column)])
+			self.first_pressed = False
 		square = self.square_reference[(row, column)]
 		if square.button["relief"] == "sunken" or self.game_over:  # already pressed
 			return
@@ -169,6 +176,7 @@ class GUI:
 
 	def reset(self) -> None:
 		self.game_over = False
+		self.first_pressed = True
 		self.remaining_bombs = settings["total bombs"]
 		self.remaining_bombs_label.config(text=f"remaining bombs: {self.remaining_bombs}")
 		self.grid_frame.destroy()
