@@ -87,9 +87,9 @@ class GUI:
 		for row in range(dimentions[0]):
 			for column in range(dimentions[1]):
 				square = Square(tk.Button(self.grid_frame, text="", width=2, height=1, bg=button_colours["raised"],
-				    					  command=lambda row=row, column=column: self.button_pressed(row, column, True)),
+				    					  command=lambda row=row, column=column: self.leftclick(row, column)),
 								(row, column))
-				square.button.bind("<Button-3>", lambda event, row=row, column=column: self.button_pressed(row, column, False))
+				square.button.bind("<Button-3>", lambda event, row=row, column=column: self.rightclick(row, column))
 				square.button.grid(row=row, column=column)
 				self.square_reference[(row, column)] = square
 	
@@ -98,7 +98,8 @@ class GUI:
 		while bombs_remaining > 0:
 			row, column = (random.randint(0, dimentions[0] - 1), random.randint(0, dimentions[1] - 1))
 			current_square = self.square_reference[(row, column)]
-			if current_square is clicked_square:
+			# first square must be blank
+			if abs(row - clicked_square.position[0]) <= 1 and abs(column - clicked_square.position[1]) <= 1:
 				continue
 			if current_square.value == "b":
 				continue
@@ -114,26 +115,11 @@ class GUI:
 					increment_square = self.square_reference[(row+row_offset, column+column_offset)]
 					if increment_square.value != "b":
 						increment_square.value += 1
-	
-	def button_pressed(self, row: int, column: int, leftclick: bool) -> None:
-		if self.first_pressed:
-			self.apply_pattern(settings["grid size"], settings["total bombs"], self.square_reference[(row, column)])
-			self.first_pressed = False
-		square = self.square_reference[(row, column)]
-		if square.button["relief"] == "sunken" or self.game_over:  # already pressed
-			return
-		if leftclick and not square.flag:
-			if square.value == "b":
-				self.game_over = True
-				self.remaining_bombs_label.config(text="losser :( :( :(")
-				for current_square in self.square_reference.values():
-					if current_square.value == "b" and not current_square.flag:  # unflagged bomb
-						current_square.button.config(text=None, image=self.image_bomb, width=18, height=20)
-					elif current_square.flag and current_square.value != "b":  # wrong flag
-						current_square.button.config(text=None, image=self.image_bomb_crossed, width=18, height=20)
-			square.button.config(text=square.value if square.value != 0 else "", relief="sunken", fg=number_colours[str(square.value)],
-								 bg=button_colours["sunken"])
-			queue = [square] if square.value == 0 else []
+
+	def leftclick(self, row: int, column: int) -> None:
+
+		def clear_zeros(triggered_square: Square) -> None:
+			queue = [triggered_square]
 			# press all connecting 
 			for current_square in queue:
 				current_square.button.config(text=current_square.value if current_square.value != 0 else "", relief="sunken",
@@ -158,17 +144,42 @@ class GUI:
 				for neighbor in indirect_neighbors:
 					neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
 			    						   bg=button_colours["sunken"]) if neighbor.value != 0 else None
-		if not leftclick:  # right click on unpressed square
-			square.flag = not square.flag
-			if square.flag:
-				square.button.config(text=None, image=self.image_flag, width=18, height=20)
-				self.remaining_bombs -= 1
-				self.remaining_bombs_label.config(text=f"remaining bombs: {self.remaining_bombs if self.remaining_bombs >= 0 else 0}")
-			else:
-				square.button.config(text="", fg=number_colours[str(square.value)], image="", width=2, height=1)
-				self.remaining_bombs += 1
-				self.remaining_bombs_label.config(text=f"remaining bombs: {self.remaining_bombs}")
-		# if all non-bomb squares are pressed or all bombs are flagged
+
+		if self.first_pressed:
+			self.apply_pattern(settings["grid size"], settings["total bombs"], self.square_reference[(row, column)])
+			self.first_pressed = False
+		square = self.square_reference[(row, column)]
+		if square.button["relief"] == "sunken" or square.flag or self.game_over:  # won't press if already pressed, flagged, or game over
+			return
+		if square.value == "b":
+			self.game_over = True
+			self.remaining_bombs_label.config(text="losser :( :( :(")
+			# reveal all bombs
+			for current_square in self.square_reference.values():
+				if current_square.value == "b" and not current_square.flag:  # unflagged bomb
+					current_square.button.config(text=None, image=self.image_bomb, width=18, height=20)
+				elif current_square.flag and current_square.value != "b":  # wrong flag
+					current_square.button.config(text=None, image=self.image_bomb_crossed, width=18, height=20)
+			return
+		square.button.config(text=square.value if square.value != 0 else "", relief="sunken", fg=number_colours[str(square.value)],
+								 bg=button_colours["sunken"])
+		if square.value == 0:
+			clear_zeros(square)
+		self.check_win()
+
+	def rightclick(self, row: int, column: int) -> None:
+		square = self.square_reference[(row, column)]
+		square.flag = not square.flag
+		if square.flag:
+			square.button.config(text=None, image=self.image_flag, width=18, height=20)
+			self.remaining_bombs -= 1
+		else:
+			square.button.config(text=None, image="", fg=number_colours[str(square.value)], width=2, height=1)
+			self.remaining_bombs += 1
+		self.remaining_bombs_label.config(text=f"Remaining Bombs: {self.remaining_bombs if self.remaining_bombs >= 0 else 0}")
+		self.check_win()
+	
+	def check_win(self) -> None:
 		if all(square.button["relief"] == "sunken" for square in self.square_reference.values() if square.value != "b") or \
 		   all(square.flag for square in self.square_reference.values() if square.value == "b"):
 			self.game_over = True
