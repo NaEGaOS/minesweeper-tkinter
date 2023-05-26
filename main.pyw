@@ -176,12 +176,15 @@ class GUI:
 		else:
 			square.button.config(text=None, image="", fg=number_colours[str(square.value)], width=2, height=1)
 			self.remaining_bombs += 1
-		self.remaining_bombs_label.config(text=f"Remaining Bombs: {self.remaining_bombs if self.remaining_bombs >= 0 else 0}")
+		self.remaining_bombs_label.config(text=f"Remaining Bombs: {self.remaining_bombs}")
 		self.check_win()
 	
 	def check_win(self) -> None:
-		if all(square.button["relief"] == "sunken" for square in self.square_reference.values() if square.value != "b") or \
-		   all(square.flag for square in self.square_reference.values() if square.value == "b"):
+		# check if all bombs are flagged
+		all_bombs_flagged = all(square.flag for square in self.square_reference.values() if square.value == "b")
+		# check if all non-bombs are pressed
+		all_pressed = all(square.button["relief"] == "sunken" for square in self.square_reference.values() if square.value != "b")
+		if (all_bombs_flagged and self.remaining_bombs == 0) or all_pressed:
 			self.game_over = True
 			self.remaining_bombs_label.config(text="you win :) :) :)")
 
