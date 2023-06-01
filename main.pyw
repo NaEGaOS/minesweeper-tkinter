@@ -13,6 +13,9 @@ class Global:
 	global button_colours
 	with open(r"game files\json files\button_colours.json", "r") as button_colours_file:
 		button_colours = json.load(button_colours_file)
+	global defines
+	with open(r"game files\json files\defines.json", "r") as defines_file:
+		defines = json.load(defines_file)
 	
 
 class Square:
@@ -83,10 +86,11 @@ class GUI:
 		settings_window.mainloop()
 	
 	def create_grid(self, dimentions: tuple[int, int]) -> None:
+		text_width, text_height = defines["text size"]
 		self.square_reference = {}
 		for row in range(dimentions[0]):
 			for column in range(dimentions[1]):
-				square = Square(tk.Button(self.grid_frame, text="", width=2, height=1, bg=button_colours["raised"],
+				square = Square(tk.Button(self.grid_frame, text="", width=text_width, height=text_height, bg=button_colours["raised"],
 				    					  command=lambda row=row, column=column: self.leftclick(row, column)),
 								(row, column))
 				square.button.bind("<Button-3>", lambda event, row=row, column=column: self.rightclick(row, column))
@@ -117,34 +121,6 @@ class GUI:
 						increment_square.value += 1
 
 	def leftclick(self, row: int, column: int) -> None:
-
-		def clear_zeros(triggered_square: Square) -> None:
-			queue = [triggered_square]
-			# press all connecting 
-			for current_square in queue:
-				current_square.button.config(text=current_square.value if current_square.value != 0 else "", relief="sunken",
-											 bg=button_colours["sunken"])
-				direct_neighbors = []
-				indirect_neighbors = []
-				row, column = current_square.position
-				direct_neighbors.append(self.square_reference[row-1, column]) if row != 0 else None
-				direct_neighbors.append(self.square_reference[row+1, column]) if row != settings["grid size"][0] - 1 else None
-				direct_neighbors.append(self.square_reference[row, column-1]) if column != 0 else None
-				direct_neighbors.append(self.square_reference[row, column+1]) if column != settings["grid size"][1] - 1 else None
-				indirect_neighbors.append(self.square_reference[row-1, column-1]) if row != 0 and column != 0 else None
-				indirect_neighbors.append(self.square_reference[row-1, column+1]) if row != 0 and column != settings["grid size"][1] - 1 else None
-				indirect_neighbors.append(self.square_reference[row+1, column-1]) if row != settings["grid size"][0] - 1 and column != 0 else None
-				indirect_neighbors.append(self.square_reference[row+1, column+1]) if row != settings["grid size"][0] - 1 and column != settings["grid size"][1] - 1 else None
-				for neighbor in direct_neighbors:
-					if neighbor.value == 0:
-						queue.append(neighbor) if neighbor not in queue else None  # gets pressed later
-					else:
-						neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
-			     							   bg=button_colours["sunken"])
-				for neighbor in indirect_neighbors:
-					neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
-			    						   bg=button_colours["sunken"]) if neighbor.value != 0 else None
-
 		if self.first_pressed:
 			self.apply_pattern(settings["grid size"], settings["total bombs"], self.square_reference[(row, column)])
 			self.first_pressed = False
@@ -152,29 +128,64 @@ class GUI:
 		if square.button["relief"] == "sunken" or square.flag or self.game_over:  # won't press if already pressed, flagged, or game over
 			return
 		if square.value == "b":
-			self.game_over = True
-			self.remaining_bombs_label.config(text="losser :( :( :(")
-			# reveal all bombs
-			for current_square in self.square_reference.values():
-				if current_square.value == "b" and not current_square.flag:  # unflagged bomb
-					current_square.button.config(text=None, image=self.image_bomb, width=18, height=20)
-				elif current_square.flag and current_square.value != "b":  # wrong flag
-					current_square.button.config(text=None, image=self.image_bomb_crossed, width=18, height=20)
+			self.bomb_pressed()
 			return
 		square.button.config(text=square.value if square.value != 0 else "", relief="sunken", fg=number_colours[str(square.value)],
 								 bg=button_colours["sunken"])
 		if square.value == 0:
-			clear_zeros(square)
+			self.clear_zeros(square)
 		self.check_win()
 
+	def clear_zeros(self, triggered_square: Square) -> None:
+		queue = [triggered_square]
+		# press all connecting 
+		for current_square in queue:
+			current_square.button.config(text=current_square.value if current_square.value != 0 else "", relief="sunken",
+											bg=button_colours["sunken"])
+			direct_neighbors = []
+			indirect_neighbors = []
+			row, column = current_square.position
+			direct_neighbors.append(self.square_reference[row-1, column]) if row != 0 else None
+			direct_neighbors.append(self.square_reference[row+1, column]) if row != settings["grid size"][0] - 1 else None
+			direct_neighbors.append(self.square_reference[row, column-1]) if column != 0 else None
+			direct_neighbors.append(self.square_reference[row, column+1]) if column != settings["grid size"][1] - 1 else None
+			indirect_neighbors.append(self.square_reference[row-1, column-1]) if row != 0 and column != 0 else None
+			indirect_neighbors.append(self.square_reference[row-1, column+1]) if row != 0 and column != settings["grid size"][1] - 1 else None
+			indirect_neighbors.append(self.square_reference[row+1, column-1]) if row != settings["grid size"][0] - 1 and column != 0 else None
+			indirect_neighbors.append(self.square_reference[row+1, column+1]) if row != settings["grid size"][0] - 1 and column != settings["grid size"][1] - 1 else None
+			for neighbor in direct_neighbors:
+				if neighbor.value == 0:
+					queue.append(neighbor) if neighbor not in queue else None  # gets pressed later
+				else:
+					neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
+											bg=button_colours["sunken"])
+			for neighbor in indirect_neighbors:
+				neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
+										bg=button_colours["sunken"]) if neighbor.value != 0 else None
+	
+	def bomb_pressed(self) -> None:
+		self.game_over = True
+		self.remaining_bombs_label.config(text="losser :( :( :(")
+		image_width, image_height = defines["image size"]
+		# reveal all bombs
+		for current_square in self.square_reference.values():
+			if current_square.value == "b" and not current_square.flag:  # unflagged bomb
+				current_square.button.config(text=None, image=self.image_bomb, width=image_width, height=image_height)
+			elif current_square.flag and current_square.value != "b":  # wrong flag
+				current_square.button.config(text=None, image=self.image_bomb_crossed, width=image_width, height=image_height)
+
 	def rightclick(self, row: int, column: int) -> None:
+		if self.square_reference[(row, column)].button["relief"] == "sunken" or self.game_over:  # won't flag if already pressed or game over
+			return
+		image_width, image_height = defines["image size"]
+		text_width, text_height = defines["text size"]
 		square = self.square_reference[(row, column)]
 		square.flag = not square.flag
 		if square.flag:
-			square.button.config(text=None, image=self.image_flag, width=18, height=20)
+			square.button.config(text=None, image=self.image_flag, width=image_width, height=image_height)
 			self.remaining_bombs -= 1
 		else:
-			square.button.config(text=None, image="", fg=number_colours[str(square.value)], width=2, height=1)
+			square.button.config(text=None, image="", fg=number_colours[str(square.value)], width=text_width, height=text_height)
 			self.remaining_bombs += 1
 		self.remaining_bombs_label.config(text=f"Remaining Bombs: {self.remaining_bombs}")
 		self.check_win()
