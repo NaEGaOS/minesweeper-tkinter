@@ -165,7 +165,7 @@ class GUI:
 	
 	def bomb_pressed(self) -> None:
 		self.game_over = True
-		self.remaining_bombs_label.config(text="losser :( :( :(")
+		self.remaining_bombs_label.config(text=defines["lose text"])
 		image_width, image_height = defines["image size"]
 		# reveal all bombs
 		for current_square in self.square_reference.values():
@@ -197,7 +197,7 @@ class GUI:
 		all_pressed = all(square.button["relief"] == "sunken" for square in self.square_reference.values() if square.value != "b")
 		if (all_bombs_flagged and self.remaining_bombs == 0) or all_pressed:
 			self.game_over = True
-			self.remaining_bombs_label.config(text="you win :) :) :)")
+			self.remaining_bombs_label.config(text=defines["win text"])
 
 	def reset(self) -> None:
 		self.game_over = False
@@ -210,10 +210,12 @@ class GUI:
 		self.mainloop()
 
 	def mainloop(self) -> None:
-		self.settings_button.place(x=5, y=5)
-		self.new_game_button.pack(padx=5, pady=5)
-		self.remaining_bombs_label.pack(padx=5, pady=5)
-		self.grid_frame.pack(padx=5, pady=5)
+		padx = defines["padx"]
+		pady = defines["pady"]
+		self.settings_button.place(x=padx, y=pady)
+		self.new_game_button.pack(padx=padx, pady=pady)
+		self.remaining_bombs_label.pack(padx=padx, pady=pady)
+		self.grid_frame.pack(padx=padx, pady=pady)
 		self.root.mainloop()
 
 

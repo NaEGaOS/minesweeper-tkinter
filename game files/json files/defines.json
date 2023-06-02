@@ -1,4 +1,8 @@
 {
     "text size": [2, 1],
-    "image size": [18, 20]
+    "image size": [18, 20],
+    "lose text": "losser :( :( :(",
+    "win text": "you win :) :) :)",
+    "padx": 5,
+    "pady": 5
 }
