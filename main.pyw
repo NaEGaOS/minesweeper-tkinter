@@ -138,30 +138,27 @@ class GUI:
 
 	def clear_zeros(self, triggered_square: Square) -> None:
 		queue = [triggered_square]
-		# press all connecting 
+		# press all connecting
 		for current_square in queue:
 			current_square.button.config(text=current_square.value if current_square.value != 0 else "", relief="sunken",
 											bg=button_colours["sunken"])
-			direct_neighbors = []
-			indirect_neighbors = []
+			neighbors = []
 			row, column = current_square.position
-			direct_neighbors.append(self.square_reference[row-1, column]) if row != 0 else None
-			direct_neighbors.append(self.square_reference[row+1, column]) if row != settings["grid size"][0] - 1 else None
-			direct_neighbors.append(self.square_reference[row, column-1]) if column != 0 else None
-			direct_neighbors.append(self.square_reference[row, column+1]) if column != settings["grid size"][1] - 1 else None
-			indirect_neighbors.append(self.square_reference[row-1, column-1]) if row != 0 and column != 0 else None
-			indirect_neighbors.append(self.square_reference[row-1, column+1]) if row != 0 and column != settings["grid size"][1] - 1 else None
-			indirect_neighbors.append(self.square_reference[row+1, column-1]) if row != settings["grid size"][0] - 1 and column != 0 else None
-			indirect_neighbors.append(self.square_reference[row+1, column+1]) if row != settings["grid size"][0] - 1 and column != settings["grid size"][1] - 1 else None
-			for neighbor in direct_neighbors:
+			# get neighbors
+			for row_offset in range(-1, 2):
+				for column_offset in range(-1, 2):
+					if row_offset == column_offset == 0:
+						continue
+					if not (0 <= row + row_offset < settings["grid size"][0] and 0 <= column + column_offset < settings["grid size"][1]):
+						continue
+					neighbors.append(self.square_reference[(row+row_offset, column+column_offset)])
+			# press neighbors or add to queue
+			for neighbor in neighbors:
 				if neighbor.value == 0:
 					queue.append(neighbor) if neighbor not in queue else None  # gets pressed later
 				else:
 					neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
 											bg=button_colours["sunken"])
-			for neighbor in indirect_neighbors:
-				neighbor.button.config(text=neighbor.value, relief="sunken", fg=number_colours[str(neighbor.value)],
-										bg=button_colours["sunken"]) if neighbor.value != 0 else None
 	
 	def bomb_pressed(self) -> None:
 		self.game_over = True
